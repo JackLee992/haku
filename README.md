@@ -65,6 +65,8 @@ The executable also supports a terminal interface using the same engine:
 
 GitHub Actions runs integrity tests and builds the rootless package on macOS.
 Version tags publish prerelease `.deb` and build metadata to GitHub Releases.
+The first prerelease was built and tested locally because GitHub currently
+blocks this account's jobs at the billing/spending-limit gate.
 Only generic source and synthetic tests belong in Git. `.build/`, `dist/`,
 `evidence/`, IPAs, device identifiers, credentials and real app captures are
 excluded. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
