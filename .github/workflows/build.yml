@@ -38,4 +38,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           HAKU_TAG: ${{ github.ref_name }}
-        run: gh release create "$HAKU_TAG" dist/* --title "Haku $HAKU_TAG" --prerelease --generate-notes
+        run: |
+          if gh release view "$HAKU_TAG" >/dev/null 2>&1; then
+            echo "Release exists; preserving its published assets."
+          else
+            gh release create "$HAKU_TAG" dist/* --verify-tag --title "Haku $HAKU_TAG" --prerelease --generate-notes
+          fi

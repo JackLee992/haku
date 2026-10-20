@@ -2,6 +2,37 @@
 
 The acceptance criteria are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## 0.2.0 with haku-server
+
+Validated on 2026-10-21 on the same iPhone 12 / iOS 16.1.1 / Dopamine rootless
+environment. The server is the maintained Frida Core 17.24.3 fork, packaged as
+`com.jacklee.haku-server` version `17.24.3+haku.1`, with an arm64/arm64e universal
+executable and a separate launchd service.
+
+| Gate | Status |
+| --- | --- |
+| Haku host integrity, package and connection checks | 21 passed |
+| Server host package, port and restart checks | 7 passed |
+| Default 57042 and custom 58000 enumeration | Passed |
+| App port preference across fresh processes | Passed |
+| Daemon restart and upgrade preserve custom port | Passed |
+| Reserved 27042/27043 and malformed values | Rejected on client, server and daemon control |
+| Old port after change | Rejected connection; no fallback to ordinary Frida |
+| Full acquisition through haku-server on 58000 | Passed: 33 encrypted images verified, 2 originally clear, 235,618,304 captured bytes |
+| Archive and independent main checks | 1,383 ZIP members passed independent CRC checks; main comparison passed and matches prior validated bytes |
+| Ordinary Frida coexistence | Passed; original PID and executable hash unchanged; enumeration still works |
+| Final connection settings | Both client and daemon restored to 57042 |
+| Connection screen, GUI capture and share sheet | Owner elected to check manually; remain unverified |
+| Haku private-repository hosted CI | Billing/spending gate prevents job steps; local tests/build passed |
+
+Tested Haku code revision: `df132d0a261033144028fe10b51959012e8f2425`.
+Source SHA-256: `75bc11d569bc9807dc5c473cd4a387b233cba35bdd878ecaedcac1a420f70cd0`.
+Release assets carry their own revision and package hashes in `build.json`.
+See the [server validation record](https://github.com/JackLee992/haku-server/blob/haku/haku/VALIDATION.md)
+for server build and acceptance details.
+
+## Historical 0.1.0 with the upstream Frida service
+
 | Gate | Current status |
 | --- | --- |
 | Host Mach-O, archive, cancellation and Debian-package regression tests | **18 passed** on macOS |
