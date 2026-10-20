@@ -48,5 +48,6 @@ class PackageTests(unittest.TestCase):
             with tarfile.open(fileobj=io.BytesIO(members["control.tar.gz"])) as archive:
                 control = archive.extractfile("./control").read().decode()
                 self.assertIn("Architecture: iphoneos-arm64", control)
-                self.assertIn("re.frida.server (= 17.24.3)", control)
+                self.assertIn("com.jacklee.haku-server (= 17.24.3+haku.1)", control)
+                self.assertNotIn("re.frida.server", control)
                 self.assertTrue(archive.extractfile("./postinst").read().startswith(b"#!/var/jb/usr/bin/sh\n"))

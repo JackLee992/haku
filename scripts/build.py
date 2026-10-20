@@ -13,7 +13,8 @@ import tarfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.0"
+VERSION = "0.2.0"
+HAKU_SERVER_VERSION = "17.24.3+haku.1"
 FRIDA = "17.24.3"
 DEVKIT_SHA256 = "8e2daa0087eebeb64848dd2bcab2211380fc9b3294ca003482762ebb8ba113cb"
 
@@ -78,7 +79,7 @@ Description: On-device application acquisition with verified IPA export
 Maintainer: JackLee992
 Author: JackLee992
 Section: Applications
-Depends: firmware (>= 15.0), re.frida.server (= {FRIDA}), uikittools
+Depends: firmware (>= 15.0), com.jacklee.haku-server (= {HAKU_SERVER_VERSION}), uikittools
 Homepage: https://github.com/JackLee992/haku
 """
     postinst = """#!/var/jb/usr/bin/sh
@@ -121,7 +122,7 @@ def main():
         shutil.rmtree(app)
     app.mkdir()
     sdk = subprocess.check_output(["xcrun", "--sdk", "iphoneos", "--show-sdk-path"], text=True).strip()
-    sources = [ROOT / "Sources" / name for name in ("HakuApp.m", "HakuEngine.m", "HakuArchive.m", "HakuMachO.c")]
+    sources = [ROOT / "Sources" / name for name in ("HakuApp.m", "HakuEngine.m", "HakuArchive.m", "HakuMachO.c", "HakuConnection.m")]
     run(["xcrun", "--sdk", "iphoneos", "clang", "-arch", "arm64", "-isysroot", sdk, "-mios-version-min=15.0", "-O2", "-fobjc-arc", "-fobjc-exceptions", "-Werror=implicit-function-declaration", "-Wno-deprecated-declarations", "-I", devkit, *sources, "-L", devkit, "-lfrida-core", "-lbsm", "-ldl", "-lm", "-lresolv", "-lz", "-Wl,-dead_strip", "-framework", "Foundation", "-framework", "CoreFoundation", "-framework", "CoreGraphics", "-framework", "UIKit", "-o", app / "Haku"])
     source_digest = hashlib.sha256()
     for folder in ("Sources", "Agent", "Resources", "scripts", "LICENSES"):

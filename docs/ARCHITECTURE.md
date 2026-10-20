@@ -1,9 +1,12 @@
 # Architecture and acceptance criteria
 
 Haku is a UIKit application delivered as a rootless Debian package, using
-`iphoneos-arm64` and `/var/jb/Applications/Haku.app`. It uses the installed Frida
-server's existing capabilities. It installs no persistent daemon, system hook,
-remote listener, or exploit. The app is unsandboxed on the jailbroken device so
+`iphoneos-arm64` and `/var/jb/Applications/Haku.app`. Version 0.2 requires the
+separately packaged [haku-server](https://github.com/JackLee992/haku-server), a
+source fork of Frida Core 17.24.3 with its own launchd label and loopback listener.
+The default is `127.0.0.1:57042`; the app and server can be configured to another
+matching port. The original Frida service remains independent. The app is
+unsandboxed on the jailbroken device so
 it can read the explicitly selected installed bundle. Its entitlements are kept
 in `Resources/entitlements.plist`.
 
@@ -12,6 +15,7 @@ in `Resources/entitlements.plist`.
 | Component | Responsibility |
 | --- | --- |
 | `HakuApp.m` | App list, search, capture progress, cancellation, export sharing; terminal interface |
+| `HakuConnection.m` | Strict port validation, persistent connection setting and loopback address construction |
 | `HakuEngine.m` | Loopback Frida client, exact bundle selection, suspended spawn, private copy, chunk coverage, reports, cleanup |
 | `capture.js` | Loaded-image identity and segment-aware range capture, without ObjC/main-queue work or forced framework loading |
 | `HakuMachO.c` | Bounded Mach-O/FAT parser and strict encryption/stable-byte comparator |

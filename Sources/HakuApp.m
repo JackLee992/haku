@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import "HakuEngine.h"
 #import "HakuArchive.h"
+#import "HakuConnection.h"
 
 static NSString *exportsRoot(void) { return [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Haku"]; }
 static dispatch_queue_t engineQueue(void) { static dispatch_queue_t queue;static dispatch_once_t once;dispatch_once(&once,^{queue=dispatch_queue_create("com.jacklee.haku.engine",DISPATCH_QUEUE_SERIAL);});return queue; }
@@ -81,6 +82,28 @@ static void shareFiles(UIViewController *controller,NSArray *files) {
 }
 @end
 
+@interface HakuConnectionController : UITableViewController
+@property(nonatomic,strong) UITextField *portField;
+@end
+@implementation HakuConnectionController
+- (void)viewDidLoad {
+    [super viewDidLoad];self.title=@"Connection";
+    self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:@"Save" style:UIBarButtonItemStyleDone target:self action:@selector(save)];
+    self.portField=[UITextField new];self.portField.keyboardType=UIKeyboardTypeNumberPad;self.portField.text=[@(HakuConfiguredServerPort()) stringValue];self.portField.placeholder=@"57042";self.portField.textAlignment=NSTextAlignmentRight;self.portField.accessibilityIdentifier=@"hakuServerPort";
+}
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return 1; }
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return @"haku-server on this iPhone"; }
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section { return @"Default: 127.0.0.1:57042. Enter the port configured for haku-server. Frida ports 27042 and 27043 stay separate. Saving changes Haku's connection only."; }
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell=[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];cell.textLabel.text=@"Port";self.portField.frame=CGRectMake(0,0,160,44);cell.accessoryView=self.portField;cell.selectionStyle=UITableViewCellSelectionStyleNone;return cell;
+}
+- (void)save {
+    NSError *error=nil;
+    if(HakuSaveServerPort(self.portField.text,&error)) { [self.portField resignFirstResponder];[self.navigationController popViewControllerAnimated:YES]; }
+    else { UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Invalid port" message:error.localizedDescription preferredStyle:UIAlertControllerStyleAlert];[alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];[self presentViewController:alert animated:YES completion:nil]; }
+}
+@end
+
 @interface HakuApplicationsController : UITableViewController <UISearchResultsUpdating>
 @property(nonatomic,strong) NSArray<NSDictionary *> *apps,*filtered;
 @property(nonatomic,strong) UISearchController *search;
@@ -92,6 +115,7 @@ static void shareFiles(UIViewController *controller,NSArray *files) {
     [super viewDidLoad];self.title=@"Haku";self.navigationController.navigationBar.prefersLargeTitles=YES;self.tableView.rowHeight=74;self.tableView.accessibilityIdentifier=@"applicationList";
     self.search=[[UISearchController alloc] initWithSearchResultsController:nil];self.search.searchResultsUpdater=self;self.search.obscuresBackgroundDuringPresentation=NO;self.search.searchBar.placeholder=@"Search applications";self.navigationItem.searchController=self.search;
     self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:@"Exports" style:UIBarButtonItemStylePlain target:self action:@selector(exports)];
+    self.navigationItem.leftBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:@"Connection" style:UIBarButtonItemStylePlain target:self action:@selector(connection)];
     self.refreshControl=[UIRefreshControl new];[self.refreshControl addTarget:self action:@selector(reload) forControlEvents:UIControlEventValueChanged];
     UIView *header=[[UIView alloc] initWithFrame:CGRectMake(0,0,320,116)];self.subtitle=[[UILabel alloc] initWithFrame:CGRectMake(20,8,280,96)];self.subtitle.autoresizingMask=UIViewAutoresizingFlexibleWidth;self.subtitle.numberOfLines=0;self.subtitle.font=[UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];self.subtitle.textColor=UIColor.secondaryLabelColor;self.subtitle.text=@"Choose an app to export. The selected app restarts during capture.\n\nLoading applications…";[header addSubview:self.subtitle];self.tableView.tableHeaderView=header;[self reload];
 }
@@ -99,11 +123,13 @@ static void shareFiles(UIViewController *controller,NSArray *files) {
     if(self.engine)return;self.engine=[HakuEngine new];HakuEngine *engine=self.engine;__weak typeof(self) weakSelf=self;
     dispatch_async(engineQueue(),^{ NSError *error=nil;NSArray *apps=[engine applications:&error];dispatch_async(dispatch_get_main_queue(),^{ typeof(self) self=weakSelf;if(!self)return;self.engine=nil;[self.refreshControl endRefreshing];self.apps=apps ?: @[];self.subtitle.text=apps?[NSString stringWithFormat:@"Choose an app to export. The selected app restarts during capture.\n\n%lu applications · On-device export",(unsigned long)apps.count]:[NSString stringWithFormat:@"%@\n\nPull down to retry.",error.localizedDescription];[self updateSearchResultsForSearchController:self.search]; }); });
 }
+- (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated];[self reload]; }
 - (void)updateSearchResultsForSearchController:(UISearchController *)searchController { NSString *query=searchController.searchBar.text ?: @"";self.filtered=query.length?[self.apps filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSDictionary *app,NSDictionary *bindings) { return [app[@"name"] localizedCaseInsensitiveContainsString:query] || [app[@"bundle"] localizedCaseInsensitiveContainsString:query]; }]]:self.apps;[self.tableView reloadData]; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.filtered.count; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath { NSDictionary *app=self.filtered[indexPath.row];UITableViewCell *cell=[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];cell.textLabel.text=app[@"name"];cell.detailTextLabel.text=[NSString stringWithFormat:@"%@ · %@",app[@"version"],app[@"bundle"]];cell.imageView.image=[UIImage systemImageNamed:@"app.dashed"];cell.imageView.tintColor=UIColor.systemTealColor;cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;cell.accessibilityIdentifier=app[@"bundle"];return cell; }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath { HakuCaptureController *controller=[HakuCaptureController new];controller.app=self.filtered[indexPath.row];[self presentViewController:[[UINavigationController alloc] initWithRootViewController:controller] animated:YES completion:nil];[tableView deselectRowAtIndexPath:indexPath animated:YES]; }
 - (void)exports { [self.navigationController pushViewController:[[HakuExportsController alloc] initWithStyle:UITableViewStyleInsetGrouped] animated:YES]; }
+- (void)connection { [self.navigationController pushViewController:[[HakuConnectionController alloc] initWithStyle:UITableViewStyleInsetGrouped] animated:YES]; }
 @end
 
 @interface HakuAppDelegate : UIResponder <UIApplicationDelegate>
@@ -117,11 +143,22 @@ int main(int argc,char **argv) {
     @autoreleasepool {
         if(argc>1) {
             NSError *error=nil;id result=nil;HakuEngine *engine=[HakuEngine new];engine.progress=^(NSString *message){fprintf(stderr,"%s\n",message.UTF8String);};
-            if(argc==2 && !strcmp(argv[1],"--list"))result=[engine applications:&error];
-            else if(argc==4 && !strcmp(argv[1],"--dump"))result=[engine captureBundle:@(argv[2]) output:@(argv[3]) keepAlive:YES error:&error];
-            else if(argc==4 && !strcmp(argv[1],"--archive-test")) { BOOL ok=HakuCreateArchive(@(argv[2]),@(argv[3]),&error) && HakuVerifyArchive(@(argv[3]),&error);if(ok)result=@{@"zip_verified":@YES}; }
-            else if(argc==3 && !strcmp(argv[1],"--verify-archive")) { if(HakuVerifyArchive(@(argv[2]),&error))result=@{@"zip_verified":@YES}; }
-            else {fprintf(stderr,"Usage: Haku --list | --dump BUNDLE NEW_ABSOLUTE_FOLDER | --verify-archive ZIP | --archive-test PAYLOAD NEW_ZIP\n");return 2;}
+            NSMutableArray<NSString *> *arguments=[NSMutableArray array];
+            for(int i=1;i<argc;i++) {
+                if(!strcmp(argv[i],"--port")) {
+                    NSUInteger port;
+                    if(++i>=argc || !HakuParseServerPort(@(argv[i]),&port,&error)) {fprintf(stderr,"%s\n",(error.localizedDescription ?: @"--port needs a value").UTF8String);return 2;}
+                    engine.serverPort=port;
+                } else [arguments addObject:@(argv[i])];
+            }
+            NSString *command=arguments.firstObject;
+            if(arguments.count==1 && [command isEqual:@"--list"])result=[engine applications:&error];
+            else if(arguments.count==1 && [command isEqual:@"--connection"])result=@{@"endpoint":HakuServerAddress(engine.serverPort),@"port":@(engine.serverPort)};
+            else if(arguments.count==2 && [command isEqual:@"--set-port"]) {if(HakuSaveServerPort(arguments[1],&error))result=@{@"endpoint":HakuServerAddress(HakuConfiguredServerPort()),@"saved":@YES};}
+            else if(arguments.count==3 && [command isEqual:@"--dump"])result=[engine captureBundle:arguments[1] output:arguments[2] keepAlive:YES error:&error];
+            else if(arguments.count==3 && [command isEqual:@"--archive-test"]) { BOOL ok=HakuCreateArchive(arguments[1],arguments[2],&error) && HakuVerifyArchive(arguments[2],&error);if(ok)result=@{@"zip_verified":@YES}; }
+            else if(arguments.count==2 && [command isEqual:@"--verify-archive"]) { if(HakuVerifyArchive(arguments[1],&error))result=@{@"zip_verified":@YES}; }
+            else {fprintf(stderr,"Usage: Haku [--port PORT] --list | --dump BUNDLE NEW_FOLDER | --connection | --set-port PORT | --verify-archive ZIP\n");return 2;}
             if(!result) {fprintf(stderr,"%s\n",error.localizedDescription.UTF8String);return 1;}
             NSData *json=[NSJSONSerialization dataWithJSONObject:result options:NSJSONWritingPrettyPrinted|NSJSONWritingSortedKeys error:nil];fwrite(json.bytes,1,json.length,stdout);fputc('\n',stdout);return 0;
         }

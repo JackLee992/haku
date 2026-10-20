@@ -1,6 +1,7 @@
 #import "HakuEngine.h"
 #import "HakuArchive.h"
 #import "HakuMachO.h"
+#import "HakuConnection.h"
 #include "frida-core.h"
 #include <CommonCrypto/CommonDigest.h>
 #include <fcntl.h>
@@ -55,7 +56,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
     [(__bridge HakuEngine *)context detached];
 }
 @implementation HakuEngine
-- (instancetype)init { if((self=[super init])) { atomic_init(&_cancelled,false);static dispatch_once_t once;dispatch_once(&once,^{frida_init();}); }return self; }
+- (instancetype)init { if((self=[super init])) { self.serverPort=HakuConfiguredServerPort();atomic_init(&_cancelled,false);static dispatch_once_t once;dispatch_once(&once,^{frida_init();}); }return self; }
 - (void)emit:(NSString *)message { if(self.progress)self.progress(message); }
 - (void)cancel { atomic_store(&_cancelled,true);@synchronized(self) { if(_cancellable)g_cancellable_cancel(_cancellable); } }
 - (void)check {
@@ -70,9 +71,16 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
     _failure=nil;_cleaning=NO;_complete=NO;_inventory=nil;_pid=0;[self check];
     @synchronized(self) { _cancellable=g_cancellable_new(); }
     GError *error=NULL;_manager=frida_device_manager_new();
-    _device=frida_device_manager_add_remote_device_sync(_manager,"127.0.0.1:27042",NULL,_cancellable,&error);
+    NSError *portError=nil;
+    if(!HakuParseServerPort([@(self.serverPort) stringValue],NULL,&portError))@throw portError;
+    NSString *address=HakuServerAddress(self.serverPort);
+    _device=frida_device_manager_add_remote_device_sync(_manager,address.UTF8String,NULL,_cancellable,&error);
+    if(error) {
+        NSString *message=[NSString stringWithFormat:@"Cannot connect to haku-server at %@: %s",address,error->message];
+        g_error_free(error);@throw HakuError(message);
+    }
     [self checkGError:error];
-    if(!_device) @throw HakuError(@"Frida is unavailable. Install Frida 17.24.3 and activate the jailbreak.");
+    if(!_device) @throw HakuError(@"haku-server is unavailable. Check its port and activate the jailbreak.");
 }
 - (NSArray<NSDictionary *> *)readApplications {
     GError *error=NULL;FridaApplicationQueryOptions *options=frida_application_query_options_new();
@@ -176,11 +184,11 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         if(![fm createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&io]) @throw io;
         _directory=directory;_stage=[directory stringByAppendingPathComponent:@"Work"];
         struct utsname machine;uname(&machine);
-        _report=[@{@"schema":@"haku-capture-v1",@"haku_version":@"0.1.0",@"frida_version":@(frida_version_string()),@"bundle":bundle,@"run_id":NSUUID.UUID.UUIDString,@"started_at":[NSISO8601DateFormatter.new stringFromDate:NSDate.date],@"device_model":@(machine.machine),@"os":NSProcessInfo.processInfo.operatingSystemVersionString,@"keep_alive":@(keepAlive),@"main_verified":@NO,@"fully_verified":@NO,@"zip_verified":@NO,@"signed":@NO,@"installed":@NO,@"ordinary_launch_tested":@NO,@"functional_tested":@NO} mutableCopy];
+        _report=[@{@"schema":@"haku-capture-v1",@"haku_version":[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown",@"frida_version":@(frida_version_string()),@"server_endpoint":HakuServerAddress(self.serverPort),@"bundle":bundle,@"run_id":NSUUID.UUID.UUIDString,@"started_at":[NSISO8601DateFormatter.new stringFromDate:NSDate.date],@"device_model":@(machine.machine),@"os":NSProcessInfo.processInfo.operatingSystemVersionString,@"keep_alive":@(keepAlive),@"main_verified":@NO,@"fully_verified":@NO,@"zip_verified":@NO,@"signed":@NO,@"installed":@NO,@"ordinary_launch_tested":@NO,@"functional_tested":@NO} mutableCopy];
         _report[@"source_sha256"]=[NSBundle.mainBundle objectForInfoDictionaryKey:@"HakuSourceSHA256"] ?: @"unknown";
         _report[@"source_revision"]=[NSBundle.mainBundle objectForInfoDictionaryKey:@"HakuSourceRevision"] ?: @"unknown";
         _report[@"status"]=@"capturing";[self saveReport];
-        [self emit:@"Connecting to Frida on this phone…"];[self connect];
+        [self emit:[NSString stringWithFormat:@"Connecting to haku-server at %@…",HakuServerAddress(self.serverPort)]];[self connect];
         NSDictionary *selected=nil;for(NSDictionary *app in [self readApplications])if([app[@"bundle"] isEqual:bundle])selected=app;
         if(!selected)@throw HakuError(@"The selected application is no longer installed");
         if([selected[@"pid"] unsignedIntValue]) {
