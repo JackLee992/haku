@@ -145,7 +145,8 @@ BOOL HakuVerifyArchiveWithCancellation(NSString *path, BOOL (^cancelled)(void), 
                     do {
                         stream.next_out=output;stream.avail_out=sizeof(output);
                         result=inflate(&stream,Z_NO_FLUSH);
-                        if(result!=Z_OK && result!=Z_STREAM_END) @throw zipError(@"ZIP member decompression failed");
+                        if(result==Z_BUF_ERROR && stream.avail_in==0) break;
+                        if(result!=Z_OK && result!=Z_STREAM_END) @throw zipError([NSString stringWithFormat:@"ZIP member decompression failed (%d): %@",result,name]);
                         size_t nout=sizeof(output)-stream.avail_out;produced+=nout;
                         if(produced>raw) @throw zipError(@"ZIP expanded size mismatch");
                         crc=crc32(crc,output,(uInt)nout);

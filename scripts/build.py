@@ -123,7 +123,18 @@ def main():
     sdk = subprocess.check_output(["xcrun", "--sdk", "iphoneos", "--show-sdk-path"], text=True).strip()
     sources = [ROOT / "Sources" / name for name in ("HakuApp.m", "HakuEngine.m", "HakuArchive.m", "HakuMachO.c")]
     run(["xcrun", "--sdk", "iphoneos", "clang", "-arch", "arm64", "-isysroot", sdk, "-mios-version-min=15.0", "-O2", "-fobjc-arc", "-fobjc-exceptions", "-Werror=implicit-function-declaration", "-Wno-deprecated-declarations", "-I", devkit, *sources, "-L", devkit, "-lfrida-core", "-lbsm", "-ldl", "-lm", "-lresolv", "-lz", "-Wl,-dead_strip", "-framework", "Foundation", "-framework", "CoreFoundation", "-framework", "CoreGraphics", "-framework", "UIKit", "-o", app / "Haku"])
-    shutil.copy2(ROOT / "Resources/Info.plist", app / "Info.plist")
+    source_digest = hashlib.sha256()
+    for folder in ("Sources", "Agent", "Resources", "scripts", "LICENSES"):
+        for path in sorted((ROOT / folder).rglob("*")):
+            if path.is_file() and "__pycache__" not in path.parts:
+                source_digest.update(path.relative_to(ROOT).as_posix().encode() + b"\0")
+                source_digest.update(path.read_bytes())
+    source_sha256 = source_digest.hexdigest()
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    info = plistlib.loads((ROOT / "Resources/Info.plist").read_bytes())
+    info["HakuSourceSHA256"] = source_sha256
+    info["HakuSourceRevision"] = revision
+    (app / "Info.plist").write_bytes(plistlib.dumps(info))
     shutil.copy2(ROOT / "Agent/capture.js", app / "capture.js")
     shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", app / "THIRD_PARTY_NOTICES.md")
     if (ROOT / "LICENSES").exists():
@@ -137,7 +148,7 @@ def main():
     dist.mkdir(exist_ok=True)
     deb = dist / f"com.jacklee.haku_{VERSION}_iphoneos-arm64.deb"
     create_deb(app, deb)
-    metadata = {"version": VERSION, "frida": FRIDA, "devkit_sha256": DEVKIT_SHA256, "package": deb.name, "sha256": hashlib.sha256(deb.read_bytes()).hexdigest(), "architecture": "iphoneos-arm64", "minimum_ios": "15.0"}
+    metadata = {"version": VERSION, "frida": FRIDA, "devkit_sha256": DEVKIT_SHA256, "source_revision": revision, "source_sha256": source_sha256, "package": deb.name, "sha256": hashlib.sha256(deb.read_bytes()).hexdigest(), "architecture": "iphoneos-arm64", "minimum_ios": "15.0"}
     (dist / "build.json").write_text(json.dumps(metadata, indent=2) + "\n")
     print(json.dumps(metadata, indent=2))
 

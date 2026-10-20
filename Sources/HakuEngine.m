@@ -177,6 +177,8 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         _directory=directory;_stage=[directory stringByAppendingPathComponent:@"Work"];
         struct utsname machine;uname(&machine);
         _report=[@{@"schema":@"haku-capture-v1",@"haku_version":@"0.1.0",@"frida_version":@(frida_version_string()),@"bundle":bundle,@"run_id":NSUUID.UUID.UUIDString,@"started_at":[NSISO8601DateFormatter.new stringFromDate:NSDate.date],@"device_model":@(machine.machine),@"os":NSProcessInfo.processInfo.operatingSystemVersionString,@"keep_alive":@(keepAlive),@"main_verified":@NO,@"fully_verified":@NO,@"zip_verified":@NO,@"signed":@NO,@"installed":@NO,@"ordinary_launch_tested":@NO,@"functional_tested":@NO} mutableCopy];
+        _report[@"source_sha256"]=[NSBundle.mainBundle objectForInfoDictionaryKey:@"HakuSourceSHA256"] ?: @"unknown";
+        _report[@"source_revision"]=[NSBundle.mainBundle objectForInfoDictionaryKey:@"HakuSourceRevision"] ?: @"unknown";
         [self emit:@"Connecting to Frida on this phone…"];[self connect];
         NSDictionary *selected=nil;for(NSDictionary *app in [self readApplications])if([app[@"bundle"] isEqual:bundle])selected=app;
         if(!selected)@throw HakuError(@"The selected application is no longer installed");
@@ -278,7 +280,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
             }
         }
         for(NSDictionary *record in _records)if([record[@"status"] isEqual:@"unsupported"])full=NO;
-        _report[@"main_verified"]=@(mainPassed);_report[@"main_decrypted"]=@(mainWasEncrypted);_report[@"fully_verified"]=@(full && mainPassed);_report[@"captured_bytes"]=@(_bytesReceived);
+        _report[@"main_verified"]=@(mainPassed);_report[@"main_decrypted"]=@(mainWasEncrypted);_report[@"fully_verified"]=(full && mainPassed)?@YES:@NO;_report[@"captured_bytes"]=@(_bytesReceived);
         if(!mainPassed)@throw HakuError(@"Main executable did not pass validation; no IPA was exported");
         [self emit:@"Compressing and checking the IPA…"];
         NSString *temporary=[directory stringByAppendingPathComponent:@"export.ipa.partial"],*ipa=[directory stringByAppendingPathComponent:@"export.ipa"];

@@ -117,7 +117,8 @@ int main(int argc,char **argv) {
             if(argc==2 && !strcmp(argv[1],"--list"))result=[engine applications:&error];
             else if(argc==4 && !strcmp(argv[1],"--dump"))result=[engine captureBundle:@(argv[2]) output:@(argv[3]) keepAlive:YES error:&error];
             else if(argc==4 && !strcmp(argv[1],"--archive-test")) { BOOL ok=HakuCreateArchive(@(argv[2]),@(argv[3]),&error) && HakuVerifyArchive(@(argv[3]),&error);if(ok)result=@{@"zip_verified":@YES}; }
-            else {fprintf(stderr,"Usage: Haku --list | --dump BUNDLE NEW_ABSOLUTE_FOLDER | --archive-test PAYLOAD NEW_ZIP\n");return 2;}
+            else if(argc==3 && !strcmp(argv[1],"--verify-archive")) { if(HakuVerifyArchive(@(argv[2]),&error))result=@{@"zip_verified":@YES}; }
+            else {fprintf(stderr,"Usage: Haku --list | --dump BUNDLE NEW_ABSOLUTE_FOLDER | --verify-archive ZIP | --archive-test PAYLOAD NEW_ZIP\n");return 2;}
             if(!result) {fprintf(stderr,"%s\n",error.localizedDescription.UTF8String);return 1;}
             NSData *json=[NSJSONSerialization dataWithJSONObject:result options:NSJSONWritingPrettyPrinted|NSJSONWritingSortedKeys error:nil];fwrite(json.bytes,1,json.length,stdout);fputc('\n',stdout);return 0;
         }

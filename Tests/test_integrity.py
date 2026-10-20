@@ -155,6 +155,14 @@ class ArchiveTests(unittest.TestCase):
         self.zip.write_bytes(self.zip.read_bytes()[:-5])
         self.assertNotEqual(self.verify(), 0)
 
+    def test_large_highly_compressible_member(self):
+        content = (b"Haku large resource fixture\n" * 300000) + bytes(range(256))
+        (self.app / "large-resource").write_bytes(content)
+        self.create()
+        self.assertEqual(self.verify(), 0)
+        with zipfile.ZipFile(self.zip) as archive:
+            self.assertEqual(archive.read("Payload/Fixture.app/large-resource"), content)
+
     def test_payload_corruption_rejected(self):
         self.create()
         data = bytearray(self.zip.read_bytes())
