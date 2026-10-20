@@ -37,9 +37,12 @@ static void shareFiles(UIViewController *controller,NSArray *files) {
     self.engine.progress=^(NSString *message) { dispatch_async(dispatch_get_main_queue(),^{typeof(self) self=weakSelf;if(!self)return;self.status.text=message;[self.messages appendFormat:@"%@\n",message];self.log.text=self.messages;[self.log scrollRangeToVisible:NSMakeRange(self.log.text.length,0)];}); };
     NSString *name=[NSString stringWithFormat:@"%@-%@",self.app[@"bundle"],NSUUID.UUID.UUIDString];self.directory=[exportsRoot() stringByAppendingPathComponent:name];
     HakuEngine *engine=self.engine;NSString *bundle=self.app[@"bundle"],*directory=self.directory;
+    BOOL previousIdleTimerDisabled=UIApplication.sharedApplication.isIdleTimerDisabled;
+    UIApplication.sharedApplication.idleTimerDisabled=YES;
     dispatch_async(engineQueue(),^{
         NSError *error=nil;NSDictionary *result=[engine captureBundle:bundle output:directory keepAlive:YES error:&error];
         dispatch_async(dispatch_get_main_queue(),^{
+            UIApplication.sharedApplication.idleTimerDisabled=previousIdleTimerDisabled;
             typeof(self) self=weakSelf;if(!self)return;[self.spinner stopAnimating];self.modalInPresentation=NO;
             self.status.text=result?([result[@"fully_verified"] boolValue]?@"Export verified":@"Main verified · partial export"):error.localizedDescription;
             self.navigationItem.leftBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:@"Done" style:UIBarButtonItemStyleDone target:self action:@selector(done)];
