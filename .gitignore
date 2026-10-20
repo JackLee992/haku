@@ -1,0 +1,9 @@
+.build/
+dist/
+evidence/
+*.ipa
+*.tipa
+*.deb
+*.dSYM/
+.DS_Store
+__pycache__/
