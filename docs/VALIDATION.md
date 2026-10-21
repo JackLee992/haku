@@ -25,6 +25,7 @@ maintained in the server repository.
 | Output separation | Rejects output inside an app bundle before creating files; original native files unchanged |
 | Server coexistence | Both daemon PIDs and server binary hashes unchanged across installation/capture; final connection succeeds on 57042 |
 | New manga icon | Installed 120/180-pixel PNGs match the built package; opaque assets generated from the 1024-pixel master |
+| Client GitHub-hosted CI | [Tagged run](https://github.com/JackLee992/haku/actions/runs/39533607564) blocked before job steps by the account payment/spending gate; local build and 25 checks passed |
 | Sileo local-file GUI install, Haku GUI capture and share sheet | Manual acceptance remains deferred; terminal package installation and CLI capture were tested |
 
 The three extra samples were already clear. Their successful exports establish
