@@ -2,6 +2,7 @@
 #import "HakuArchive.h"
 #import "HakuMachO.h"
 #import "HakuConnection.h"
+#import "HakuProcess.h"
 #include "frida-core.h"
 #include <CommonCrypto/CommonDigest.h>
 #include <fcntl.h>
@@ -107,7 +108,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
 - (void)cleanup {
     _cleaning=YES;
     for(NSMutableDictionary *r in _requests) { int fd=[r[@"fd"] intValue];if(fd>=0) { close(fd);r[@"fd"]=@(-1); } }
-    if(_pid && _device) { GError *error=NULL;frida_device_kill_sync(_device,_pid,NULL,&error);if(error)g_error_free(error);_pid=0; }
+    if(_pid && _device) { GError *error=NULL;frida_device_kill_sync(_device,_pid,NULL,&error);if(error)g_error_free(error);NSError *stopError=nil;if(!HakuEnsureProcessStopped(_pid,&stopError)) { _report[@"cleanup_error"]=stopError.localizedDescription;[self saveReport]; }_pid=0; }
     if(_script) { g_signal_handlers_disconnect_by_data(_script,(__bridge void *)self);g_object_unref(_script);_script=NULL; }
     if(_session) { g_signal_handlers_disconnect_by_data(_session,(__bridge void *)self);frida_session_detach_sync(_session,NULL,NULL);g_object_unref(_session);_session=NULL; }
     if(_device) { g_object_unref(_device);_device=NULL; }
@@ -195,6 +196,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         if([selected[@"pid"] unsignedIntValue]) {
             [self emit:@"Restarting the selected application for capture…"];GError *e=NULL;
             frida_device_kill_sync(_device,[selected[@"pid"] unsignedIntValue],_cancellable,&e);[self checkGError:e];
+            NSError *stopError=nil;if(!HakuEnsureProcessStopped([selected[@"pid"] intValue],&stopError))@throw stopError;
         }
         GError *e=NULL;_pid=frida_device_spawn_sync(_device,bundle.UTF8String,NULL,_cancellable,&e);[self checkGError:e];
         _session=frida_device_attach_sync(_device,_pid,NULL,_cancellable,&e);[self checkGError:e];
@@ -266,7 +268,8 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
             close(fd);request[@"fd"]=@(-1);
         }
         // End only the process created by this run, before ZIP compression.
-        frida_device_kill_sync(_device,_pid,NULL,&e);if(e) {g_error_free(e);e=NULL;} _pid=0;
+        frida_device_kill_sync(_device,_pid,NULL,&e);if(e) {g_error_free(e);e=NULL;}
+        NSError *stopError=nil;if(!HakuEnsureProcessStopped(_pid,&stopError))@throw stopError;_pid=0;
         BOOL mainPassed=NO,full=YES,mainWasEncrypted=NO;
         for(NSDictionary *file in _files) {
             @autoreleasepool {
