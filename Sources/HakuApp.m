@@ -2,6 +2,18 @@
 #import "HakuEngine.h"
 #import "HakuArchive.h"
 #import "HakuConnection.h"
+#include <signal.h>
+
+static NSArray *captureSignalSources(HakuEngine *engine) {
+    NSMutableArray *sources=[NSMutableArray array];
+    for(NSNumber *value in @[@(SIGINT),@(SIGTERM)]) {
+        int number=value.intValue;signal(number,SIG_IGN);
+        dispatch_source_t source=dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL,number,0,dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0));
+        dispatch_source_set_event_handler(source,^{[engine cancel];});
+        dispatch_resume(source);[sources addObject:source];
+    }
+    return sources;
+}
 
 static NSString *exportsRoot(void) { return [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Haku"]; }
 static dispatch_queue_t engineQueue(void) { static dispatch_queue_t queue;static dispatch_once_t once;dispatch_once(&once,^{queue=dispatch_queue_create("com.jacklee.haku.engine",DISPATCH_QUEUE_SERIAL);});return queue; }
@@ -22,6 +34,8 @@ static void shareFiles(UIViewController *controller,NSArray *files) {
 @property(nonatomic,strong) UIActivityIndicatorView *spinner;
 @property(nonatomic,strong) NSString *directory;
 @property(nonatomic,strong) NSMutableString *messages;
+@property(nonatomic) UIBackgroundTaskIdentifier backgroundTask;
+@property(nonatomic) BOOL backgroundExpired;
 @end
 @implementation HakuCaptureController
 - (void)viewDidLoad {
@@ -40,16 +54,27 @@ static void shareFiles(UIViewController *controller,NSArray *files) {
     HakuEngine *engine=self.engine;NSString *bundle=self.app[@"bundle"],*directory=self.directory;
     BOOL previousIdleTimerDisabled=UIApplication.sharedApplication.isIdleTimerDisabled;
     UIApplication.sharedApplication.idleTimerDisabled=YES;
+    self.backgroundTask=UIBackgroundTaskInvalid;
+    self.backgroundTask=[UIApplication.sharedApplication beginBackgroundTaskWithName:@"Haku export" expirationHandler:^{
+        [engine cancel];typeof(self) self=weakSelf;
+        if(self) { self.backgroundExpired=YES;[self endBackgroundTask]; }
+    }];
     dispatch_async(engineQueue(),^{
         NSError *error=nil;NSDictionary *result=[engine captureBundle:bundle output:directory keepAlive:YES error:&error];
         dispatch_async(dispatch_get_main_queue(),^{
             UIApplication.sharedApplication.idleTimerDisabled=previousIdleTimerDisabled;
-            typeof(self) self=weakSelf;if(!self)return;[self.spinner stopAnimating];self.modalInPresentation=NO;
+            typeof(self) self=weakSelf;if(!self)return;[self endBackgroundTask];[self.spinner stopAnimating];self.modalInPresentation=NO;
             self.status.text=result?([result[@"fully_verified"] boolValue]?@"Export verified":@"Main verified · partial export"):error.localizedDescription;
+            if(!result && self.backgroundExpired)self.status.text=@"Export interrupted. Keep Haku open and try again.";
             self.navigationItem.leftBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:@"Done" style:UIBarButtonItemStyleDone target:self action:@selector(done)];
             self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:result?@"Share":@"Report" style:UIBarButtonItemStylePlain target:self action:@selector(share)];
         });
     });
+}
+- (void)endBackgroundTask {
+    if(self.backgroundTask==UIBackgroundTaskInvalid)return;
+    UIBackgroundTaskIdentifier task=self.backgroundTask;self.backgroundTask=UIBackgroundTaskInvalid;
+    [UIApplication.sharedApplication endBackgroundTask:task];
 }
 - (void)cancel { self.navigationItem.leftBarButtonItem.enabled=NO;self.status.text=@"Cancelling…";[self.engine cancel]; }
 - (void)done { [self dismissViewControllerAnimated:YES completion:nil]; }
@@ -155,7 +180,11 @@ int main(int argc,char **argv) {
             if(arguments.count==1 && [command isEqual:@"--list"])result=[engine applications:&error];
             else if(arguments.count==1 && [command isEqual:@"--connection"])result=@{@"endpoint":HakuServerAddress(engine.serverPort),@"port":@(engine.serverPort)};
             else if(arguments.count==2 && [command isEqual:@"--set-port"]) {if(HakuSaveServerPort(arguments[1],&error))result=@{@"endpoint":HakuServerAddress(HakuConfiguredServerPort()),@"saved":@YES};}
-            else if(arguments.count==3 && [command isEqual:@"--dump"])result=[engine captureBundle:arguments[1] output:arguments[2] keepAlive:YES error:&error];
+            else if(arguments.count==3 && [command isEqual:@"--dump"]) {
+                NSArray *sources=captureSignalSources(engine);
+                result=[engine captureBundle:arguments[1] output:arguments[2] keepAlive:YES error:&error];
+                for(dispatch_source_t source in sources)dispatch_source_cancel(source);
+            }
             else if(arguments.count==3 && [command isEqual:@"--archive-test"]) { BOOL ok=HakuCreateArchive(arguments[1],arguments[2],&error) && HakuVerifyArchive(arguments[2],&error);if(ok)result=@{@"zip_verified":@YES}; }
             else if(arguments.count==2 && [command isEqual:@"--verify-archive"]) { if(HakuVerifyArchive(arguments[1],&error))result=@{@"zip_verified":@YES}; }
             else {fprintf(stderr,"Usage: Haku [--port PORT] --list | --dump BUNDLE NEW_FOLDER | --connection | --set-port PORT | --verify-archive ZIP\n");return 2;}

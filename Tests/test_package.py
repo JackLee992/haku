@@ -1,6 +1,7 @@
 from pathlib import Path
 import importlib.util
 import io
+import plistlib
 import tarfile
 import tempfile
 import unittest
@@ -12,6 +13,10 @@ spec.loader.exec_module(build)
 
 
 class PackageTests(unittest.TestCase):
+    def test_installed_app_version_matches_package(self):
+        info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
+        self.assertEqual(info['CFBundleShortVersionString'], build.VERSION)
+
     def test_rootless_archive_has_parent_directories_and_safe_modes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -48,6 +53,6 @@ class PackageTests(unittest.TestCase):
             with tarfile.open(fileobj=io.BytesIO(members["control.tar.gz"])) as archive:
                 control = archive.extractfile("./control").read().decode()
                 self.assertIn("Architecture: iphoneos-arm64", control)
-                self.assertIn("com.jacklee.haku-server (= 17.24.3+haku.1)", control)
+                self.assertIn(f"com.jacklee.haku-server (= {build.HAKU_SERVER_VERSION})", control)
                 self.assertNotIn("re.frida.server", control)
                 self.assertTrue(archive.extractfile("./postinst").read().startswith(b"#!/var/jb/usr/bin/sh\n"))

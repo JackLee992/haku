@@ -11,18 +11,18 @@ Exports screen to remove its files, including retained failed runs.
 **[Sileo installation](docs/INSTALLATION.md) · [Custom ports](docs/PORTS.md) ·
 [Validation results](docs/VALIDATION.md) · [Icon artwork](docs/BRANDING.md)**
 
-Current client: **[Haku 0.2.1](https://github.com/JackLee992/haku/releases/tag/v0.2.1)**.
-Install **[haku-server 17.24.3+haku.1](https://github.com/JackLee992/haku-server/releases/tag/haku-v17.24.3-haku.1)**
+Current client: **[Haku 0.2.2](https://github.com/JackLee992/haku/releases/tag/v0.2.2)**.
+Install **[haku-server 17.24.3+haku.2](https://github.com/JackLee992/haku-server/releases/tag/haku-v17.24.3-haku.2)**
 first, then the Haku `.deb`, opening each downloaded file in Sileo. Haku's
 repository is private and its release download requires repository access.
 There is no hosted Haku APT source; see the installation guide for the full flow.
 
-Haku 0.2.1 shows all applications returned by its server. There is no bundle-ID
+Haku 0.2.2 shows all applications returned by its server. There is no bundle-ID
 allowlist, prefix blocklist or fixed installation-directory filter. Runtime
 availability and binary validation determine whether each export completes.
 
 The first implementation targets iOS 15+ on a **previously activated rootless
-jailbreak** with **haku-server 17.24.3+haku.1** (Frida protocol 17.24.3).
+jailbreak** with **haku-server 17.24.3+haku.2** (Frida protocol 17.24.3).
 Device-tested combinations are recorded in
 [docs/VALIDATION.md](docs/VALIDATION.md); the deployment target is not a tested
 compatibility matrix. Use only applications and devices you own or are authorized
@@ -47,6 +47,12 @@ extensions, unsupported slices and malformed images remain explicit. A failed
 main gate produces a report and retained partial files without a finished IPA.
 Originally clear executables are reported as `already_clear`.
 
+The captured amount counts encrypted ranges read from memory. `bundle_bytes`
+counts the copied app files, `declared_encrypted_bytes` comes from the original
+Mach-O headers, and `ipa_bytes` is the complete archive size. Small captures use
+bytes/KiB with the exact byte count. These amounts describe different parts of
+the export; plaintext correctness still requires the native validation gates.
+
 Exports are under `~/Documents/Haku/<bundle>-<run-id>/` on the phone and available
 through Haku's **Exports** screen. Failed export folders are preserved. Successful
 exports remove only their temporary bundle copy. The derived IPA's original
@@ -65,9 +71,9 @@ python3 scripts/build.py
 
 The build downloads an official, SHA-256-pinned Frida Core devkit into `.build/`.
 Set `LDID` to an absolute executable path when it is outside `PATH`.
-Output: `dist/com.jacklee.haku_0.2.1_iphoneos-arm64.deb` and `dist/build.json`.
+Output: `dist/com.jacklee.haku_0.2.2_iphoneos-arm64.deb` and `dist/build.json`.
 Install the matching [haku-server package](https://github.com/JackLee992/haku-server/releases)
-first; Haku's dependency pins `17.24.3+haku.1`. The original Frida service can
+first; Haku's dependency pins `17.24.3+haku.2`. The original Frida service can
 remain installed independently.
 
 ## Connection port
@@ -92,6 +98,21 @@ The executable also supports a terminal interface using the same engine:
 /var/jb/Applications/Haku.app/Haku --dump com.example.ownedapp \
   /var/mobile/Documents/Haku/new-run-folder
 ```
+
+SIGINT or SIGTERM cancels a CLI export through the engine, retains its report
+and partial output, and cleans up the target process created for that run.
+
+For a real-device app-level GUI regression, wake and activate Haku, return to
+the application list, and use a compatible Frida Python environment:
+
+```sh
+python scripts/verify_gui.py --udid HARDWARE_UDID --bundle com.example.ownedapp \
+  --output /absolute/new-private-ui-evidence
+```
+
+This invokes the real UIKit selection callback and measures foreground state,
+idle restoration, background-task completion and share-sheet presentation.
+It is separate from physical touch or XCTest acceptance.
 
 ## Maintenance
 

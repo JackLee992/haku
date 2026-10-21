@@ -10,8 +10,8 @@ can be captured. These packages use `/var/jb`.
 
 | Install order | Package | Version | Download |
 | --- | --- | --- | --- |
-| 1 | `com.jacklee.haku-server` | `17.24.3+haku.1` | [Server release](https://github.com/JackLee992/haku-server/releases/tag/haku-v17.24.3-haku.1) · [rootless .deb](https://github.com/JackLee992/haku-server/releases/download/haku-v17.24.3-haku.1/com.jacklee.haku-server_17.24.3%2Bhaku.1_iphoneos-arm64.deb) |
-| 2 | `com.jacklee.haku` | `0.2.1` | [Haku release](https://github.com/JackLee992/haku/releases/tag/v0.2.1) · [rootless .deb](https://github.com/JackLee992/haku/releases/download/v0.2.1/com.jacklee.haku_0.2.1_iphoneos-arm64.deb) |
+| 1 | `com.jacklee.haku-server` | `17.24.3+haku.2` | [Server release](https://github.com/JackLee992/haku-server/releases/tag/haku-v17.24.3-haku.2) · [rootless .deb](https://github.com/JackLee992/haku-server/releases/download/haku-v17.24.3-haku.2/com.jacklee.haku-server_17.24.3%2Bhaku.2_iphoneos-arm64.deb) |
+| 2 | `com.jacklee.haku` | `0.2.2` | [Haku release](https://github.com/JackLee992/haku/releases/tag/v0.2.2) · [rootless .deb](https://github.com/JackLee992/haku/releases/download/v0.2.2/com.jacklee.haku_0.2.2_iphoneos-arm64.deb) |
 
 Haku requires that exact server package version, using Frida protocol 17.24.3.
 The server depends on `coreutils` and `dash`; Haku also needs `uikittools`.
@@ -29,7 +29,7 @@ may return 404 when unauthenticated. haku-server's repository is public.
 2. In Files, select the downloaded file, use **Share → Sileo** (look under
    **More** if necessary), and install the local package from Sileo's package
    page. Complete the queue and any restart action Sileo requests.
-3. Repeat with the **Haku 0.2.1** `.deb`. Install the server first because its
+3. Repeat with the **Haku 0.2.2** `.deb`. Install the server first because its
    release is not in the bootstrap repositories and Haku pins its exact version.
 4. Open **Haku**. Both components initially use `127.0.0.1:57042`. Existing
    saved ports survive upgrades, so check **Connection** when upgrading.
@@ -40,8 +40,7 @@ Sileo implements local `.deb` import in its
 [official 2.5.1 source](https://github.com/Sileo/Sileo/blob/c9f70158a037dc76b91c450e72af2de0514dd3ee/Sileo/AppDelegate.swift#L218-L237).
 This is an installation guide based on package metadata and upstream Sileo
 behavior; the test device's package installation was exercised from the terminal.
-Hands-on Sileo import, Haku GUI export and the share sheet are separate manual
-acceptance items in [VALIDATION.md](VALIDATION.md).
+Sileo import remains a manual acceptance item. Real-device Haku selection, foreground state and share-sheet presentation are measured separately in [VALIDATION.md](VALIDATION.md).
 
 There is **no hosted Haku APT source** at present. Install the downloaded local
 packages; a GitHub repository or release URL is not an address for Sileo's
@@ -53,9 +52,9 @@ With GitHub CLI already authenticated to an account with Haku access:
 
 ```sh
 mkdir -p ~/Downloads/Haku
-gh release download haku-v17.24.3-haku.1 --repo JackLee992/haku-server \
+gh release download haku-v17.24.3-haku.2 --repo JackLee992/haku-server \
   --pattern '*.deb' --dir ~/Downloads/Haku
-gh release download v0.2.1 --repo JackLee992/haku \
+gh release download v0.2.2 --repo JackLee992/haku \
   --pattern '*.deb' --dir ~/Downloads/Haku
 ```
 
@@ -67,12 +66,7 @@ SHA-256 and source provenance. To inspect local file hashes on macOS:
 shasum -a 256 ~/Downloads/Haku/*.deb
 ```
 
-The server package SHA-256 is
-`25c0844918bdedc0a3ddfd981bc55294cddf3e33562b63e618d3672ba5a1ec77`.
-The Haku 0.2.1 package SHA-256 is
-`61d75cac40a54ff45f3cc3b47fb67dd6aed70a179956f1434b8d6eb4956aced7`.
-Both values must match the respective release `build.json`; the 0.2.0 and
-0.2.1 client packages are different files.
+Compare each downloaded package with the SHA-256 in its own release `build.json`. The metadata also records the source revision; hashes from older releases do not apply to the new pair.
 
 ## Terminal installation and a connection check
 
@@ -80,8 +74,8 @@ If a terminal or SSH is already available on the phone, run these as **root**,
 replacing the download directory with the actual device location:
 
 ```sh
-/var/jb/usr/bin/dpkg -i /var/mobile/Downloads/com.jacklee.haku-server_17.24.3+haku.1_iphoneos-arm64.deb
-/var/jb/usr/bin/dpkg -i /var/mobile/Downloads/com.jacklee.haku_0.2.1_iphoneos-arm64.deb
+/var/jb/usr/bin/dpkg -i /var/mobile/Downloads/com.jacklee.haku-server_17.24.3+haku.2_iphoneos-arm64.deb
+/var/jb/usr/bin/dpkg -i /var/mobile/Downloads/com.jacklee.haku_0.2.2_iphoneos-arm64.deb
 /var/jb/usr/bin/hakuctl status
 /var/jb/usr/sbin/haku-server --haku-info
 ```
@@ -100,7 +94,7 @@ forwarding and troubleshooting.
 
 ## Selecting applications and interpreting an export
 
-Haku 0.2.1 has no target bundle-ID allowlist, prefix blocklist or fixed
+Haku 0.2.2 has no target bundle-ID allowlist, prefix blocklist or fixed
 installation-directory filter. It shows every application returned by
 haku-server, including system and rootless apps. Select your own app in the
 list, or pass its exact installed bundle ID to `--dump`:

@@ -1,4 +1,5 @@
 #import "HakuEngine.h"
+#import "HakuProgress.h"
 #import "HakuArchive.h"
 #import "HakuMachO.h"
 #import "HakuConnection.h"
@@ -159,7 +160,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
             }
             request[@"received"]=@(at+length);_bytesReceived+=length;
             if(_bytesReceived-_lastProgress>=4*1024*1024 || at+length==total) {
-                [self emit:[NSString stringWithFormat:@"Captured %.1f MiB · %@",_bytesReceived/1048576.0,request[@"relative"]]];_lastProgress=_bytesReceived;
+                [self emit:[NSString stringWithFormat:@"Captured %@ · %@",HakuFormatCapturedBytes(_bytesReceived),request[@"relative"]]];_lastProgress=_bytesReceived;
             }
             [self post:@{@"type":@"ack",@"payload":@{@"id":@(index),@"offset":@(at)}}];
         } else if([kind isEqual:@"complete"]) _complete=YES;
@@ -198,7 +199,12 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
             frida_device_kill_sync(_device,[selected[@"pid"] unsignedIntValue],_cancellable,&e);[self checkGError:e];
             NSError *stopError=nil;if(!HakuEnsureProcessStopped([selected[@"pid"] intValue],&stopError))@throw stopError;
         }
-        GError *e=NULL;_pid=frida_device_spawn_sync(_device,bundle.UTF8String,NULL,_cancellable,&e);[self checkGError:e];
+        // Keep the capture UI visible while the target's main thread is suspended.
+        // Requires the paired haku-server package's opt-in background launcher.
+        FridaSpawnOptions *spawnOptions=frida_spawn_options_new();
+        g_hash_table_insert(frida_spawn_options_get_aux(spawnOptions),g_strdup("haku-background"),g_variant_ref_sink(g_variant_new_boolean(TRUE)));
+        GError *e=NULL;_pid=frida_device_spawn_sync(_device,bundle.UTF8String,spawnOptions,_cancellable,&e);g_object_unref(spawnOptions);[self checkGError:e];
+        _report[@"launch_mode"]=@"background";
         _session=frida_device_attach_sync(_device,_pid,NULL,_cancellable,&e);[self checkGError:e];
         g_signal_connect(_session,"detached",G_CALLBACK(onDetached),(__bridge void *)self);
         NSString *agent=[NSString stringWithContentsOfFile:[NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"capture.js"] encoding:NSUTF8StringEncoding error:&io];
@@ -219,10 +225,12 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         _report[@"version"]=info[@"CFBundleShortVersionString"] ?: @"";_report[@"build"]=info[@"CFBundleVersion"] ?: @"";
         uint64_t bundleSize=0;NSArray *members=[fm subpathsOfDirectoryAtPath:app error:&io];if(!members)@throw io;
         for(NSString *relative in members) { struct stat st;if(!lstat([app stringByAppendingPathComponent:relative].fileSystemRepresentation,&st) && S_ISREG(st.st_mode))bundleSize+=st.st_size; }
+        _report[@"bundle_bytes"]=@(bundleSize);
         struct statfs fs;if(!statfs(directory.fileSystemRepresentation,&fs) && (uint64_t)fs.f_bavail*fs.f_bsize<bundleSize*2+64*1024*1024) @throw HakuError(@"Not enough free storage for the bundle copy and IPA");
         NSString *payload=[_stage stringByAppendingPathComponent:@"Payload"],*destination=[payload stringByAppendingPathComponent:app.lastPathComponent];
         [self emit:@"Copying the application bundle into a private export folder…"];
         if(![fm createDirectoryAtPath:payload withIntermediateDirectories:YES attributes:nil error:&io] || ![fm copyItemAtPath:app toPath:destination error:&io])@throw io;
+        uint64_t declaredEncrypted=0;
         for(NSString *relative in members) {
             @autoreleasepool {
                 [self check];NSString *source=[app stringByAppendingPathComponent:relative];struct stat st;
@@ -230,7 +238,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
                 uint32_t magic=0;int probe=open(source.fileSystemRepresentation,O_RDONLY|O_NOFOLLOW);if(probe<0)@throw HakuError(@"Cannot inspect bundle file");ssize_t got=read(probe,&magic,4);close(probe);if(got!=4)@throw HakuError(@"Truncated bundle member");
                 if(magic!=0xfeedfacf && magic!=0xfeedface && magic!=0xbebafeca && magic!=0xbfbafeca)continue;
                 NSMutableDictionary *record=[@{@"path":relative,@"status":@"pending"} mutableCopy];[_records addObject:record];
-                NSData *original=mapped(source);record[@"original_sha256"]=sha256(original);
+                NSData *original=mapped(source);record[@"original_sha256"]=sha256(original);record[@"file_bytes"]=@(original.length);
                 HakuMachO macho;char why[256];
                 if(!haku_parse_macho(original.bytes,original.length,&macho,why,sizeof(why))) {record[@"status"]=@"unsupported";record[@"reason"]=@(why);if([source isEqual:main])@throw HakuError(@(why));continue;}
                 NSDictionary *runtime=nil;for(NSDictionary *image in _inventory[@"images"])if([canonical(image[@"path"]) isEqual:canonical(source)])runtime=image;
@@ -238,7 +246,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
                 for(unsigned i=0;i<macho.count;i++) {
                     HakuSlice *slice=&macho.slices[i];NSString *uuid=uuidFor(slice);
                     for(unsigned j=0;j<slice->range_count;j++) {
-                        HakuCryptRange *range=&slice->ranges[j];if(!range->cryptid || !range->size)continue;encrypted=YES;
+                        HakuCryptRange *range=&slice->ranges[j];if(!range->cryptid || !range->size)continue;encrypted=YES;declaredEncrypted+=range->size;
                         if(!slice->has_uuid || ![runtime[@"uuid"] isEqual:uuid] || [runtime[@"cpuType"] unsignedIntValue]!=slice->cpu_type || [runtime[@"cpuSubtype"] unsignedIntValue]!=slice->cpu_subtype)canCapture=NO;
                         [ranges addObject:@{@"uuid":uuid,@"offset":@(range->offset),@"size":@(range->size),@"absolute":@(slice->offset+range->offset),@"cryptid_offset":@(slice->offset+range->cryptid_offset),@"original_range_sha256":sha256([NSData dataWithBytesNoCopy:(uint8_t *)original.bytes+slice->offset+range->offset length:(NSUInteger)range->size freeWhenDone:NO])}];
                     }
@@ -259,7 +267,8 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
                 }
             }
         }
-        [self emit:@"Capturing loaded encrypted ranges while the target stays suspended…"];
+        _report[@"declared_encrypted_bytes"]=@(declaredEncrypted);
+        [self emit:[NSString stringWithFormat:@"Copied %@ of app files; capturing %@ of encrypted ranges…",HakuFormatCapturedBytes(bundleSize),HakuFormatCapturedBytes(declaredEncrypted)]];
         [self post:@{@"type":@"capture",@"payload":@{@"requests":[_requests valueForKey:@"wire"],@"keepAlive":@(keepAlive)}}];[self waitForInventory:NO];
         for(NSMutableDictionary *request in _requests) {
             if(![request[@"received"] isEqual:request[@"size"]])@throw HakuError(@"Capture completed with missing bytes");
@@ -302,6 +311,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         BOOL (^cancelled)(void)=^BOOL { return atomic_load(&self->_cancelled); };
         if(!HakuCreateArchiveWithCancellation(payload,temporary,cancelled,&io) || !HakuVerifyArchiveWithCancellation(temporary,cancelled,&io))@throw io;
         if(![fm moveItemAtPath:temporary toPath:ipa error:&io])@throw io;
+        _report[@"ipa_bytes"]=[fm attributesOfItemAtPath:ipa error:nil][NSFileSize];
         _report[@"zip_verified"]=@YES;_report[@"ipa"]=@"export.ipa";_report[@"ipa_sha256"]=sha256(mapped(ipa));_report[@"status"]=full?@"verified":@"partial";
         _report[@"completed_at"]=[NSISO8601DateFormatter.new stringFromDate:NSDate.date];[self saveReport];
         [fm removeItemAtPath:_stage error:nil];result=_report.copy;

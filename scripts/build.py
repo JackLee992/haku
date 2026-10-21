@@ -13,8 +13,8 @@ import tarfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.2.1"
-HAKU_SERVER_VERSION = "17.24.3+haku.1"
+VERSION = "0.2.2"
+HAKU_SERVER_VERSION = "17.24.3+haku.2"
 FRIDA = "17.24.3"
 DEVKIT_SHA256 = "8e2daa0087eebeb64848dd2bcab2211380fc9b3294ca003482762ebb8ba113cb"
 
@@ -122,7 +122,7 @@ def main():
         shutil.rmtree(app)
     app.mkdir()
     sdk = subprocess.check_output(["xcrun", "--sdk", "iphoneos", "--show-sdk-path"], text=True).strip()
-    sources = [ROOT / "Sources" / name for name in ("HakuApp.m", "HakuEngine.m", "HakuArchive.m", "HakuMachO.c", "HakuConnection.m", "HakuProcess.m")]
+    sources = [ROOT / "Sources" / name for name in ("HakuApp.m", "HakuEngine.m", "HakuArchive.m", "HakuMachO.c", "HakuConnection.m", "HakuProcess.m", "HakuProgress.m")]
     run(["xcrun", "--sdk", "iphoneos", "clang", "-arch", "arm64", "-isysroot", sdk, "-mios-version-min=15.0", "-O2", "-fobjc-arc", "-fobjc-exceptions", "-Werror=implicit-function-declaration", "-Wno-deprecated-declarations", "-I", devkit, *sources, "-L", devkit, "-lfrida-core", "-lbsm", "-ldl", "-lm", "-lresolv", "-lz", "-Wl,-dead_strip", "-framework", "Foundation", "-framework", "CoreFoundation", "-framework", "CoreGraphics", "-framework", "UIKit", "-o", app / "Haku"])
     source_digest = hashlib.sha256()
     for folder in ("Sources", "Agent", "Resources", "scripts", "LICENSES"):
