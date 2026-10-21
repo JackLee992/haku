@@ -13,7 +13,7 @@ import tarfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 HAKU_SERVER_VERSION = "17.24.3+haku.1"
 FRIDA = "17.24.3"
 DEVKIT_SHA256 = "8e2daa0087eebeb64848dd2bcab2211380fc9b3294ca003482762ebb8ba113cb"
@@ -140,7 +140,7 @@ def main():
     shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", app / "THIRD_PARTY_NOTICES.md")
     if (ROOT / "LICENSES").exists():
         shutil.copytree(ROOT / "LICENSES", app / "LICENSES")
-    run(["swift", ROOT / "scripts/icon.swift", app])
+    run(["swift", ROOT / "scripts/icon.swift", app, ROOT / "Resources/Brand/haku-chestnut.png"])
     ldid = os.environ.get("LDID") or shutil.which("ldid")
     if not ldid:
         raise SystemExit("ldid is required: brew install ldid, or set LDID to its absolute path")

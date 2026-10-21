@@ -92,11 +92,8 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         for(gint i=0;i<frida_application_list_size(list);i++) {
             FridaApplication *app=frida_application_list_get(list,i);
             NSString *identifier=@(frida_application_get_identifier(app));
-            if(![identifier hasPrefix:@"com.apple."] && ![identifier isEqualToString:@"com.jacklee.haku"]) {
+            if(identifier.length) {
                 GHashTable *parameters=frida_application_get_parameters(app);
-                GVariant *path=g_hash_table_lookup(parameters,"path");
-                NSString *installedPath=path && g_variant_is_of_type(path,G_VARIANT_TYPE_STRING)?canonical(@(g_variant_get_string(path,NULL))):@"";
-                if(![installedPath hasPrefix:@"/private/var/containers/Bundle/Application/"] && ![installedPath hasPrefix:@"/var/containers/Bundle/Application/"]) { g_object_unref(app);continue; }
                 GVariant *version=g_hash_table_lookup(parameters,"version");
                 NSString *v=version && g_variant_is_of_type(version,G_VARIANT_TYPE_STRING)?@(g_variant_get_string(version,NULL)):@"";
                 [apps addObject:@{@"bundle":identifier,@"name":@(frida_application_get_name(app)),@"version":v,@"pid":@(frida_application_get_pid(app))}];
@@ -178,8 +175,11 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
     NSDictionary *result=nil;_directory=nil;_report=nil;_records=[NSMutableArray array];_files=[NSMutableArray array];_requests=[NSMutableArray array];_bytesReceived=0;_lastProgress=0;
     @try {
         NSFileManager *fm=NSFileManager.defaultManager;
-        if(!bundle.length || [bundle hasPrefix:@"com.apple."] || [bundle isEqual:@"com.jacklee.haku"]) @throw HakuError(@"Choose an installed user application");
+        if(!bundle.length) @throw HakuError(@"Choose an installed application");
         if(!directory.isAbsolutePath || [fm fileExistsAtPath:directory]) @throw HakuError(@"Export folder must be a new absolute path");
+        for(NSString *parent=canonical(directory);parent.length>1;parent=parent.stringByDeletingLastPathComponent) {
+            if([parent.pathExtension caseInsensitiveCompare:@"app"]==NSOrderedSame) @throw HakuError(@"Keep export files outside application bundles so the installed originals remain unchanged");
+        }
         NSError *io=nil;
         if(![fm createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&io]) @throw io;
         _directory=directory;_stage=[directory stringByAppendingPathComponent:@"Work"];
@@ -191,6 +191,7 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         [self emit:[NSString stringWithFormat:@"Connecting to haku-server at %@…",HakuServerAddress(self.serverPort)]];[self connect];
         NSDictionary *selected=nil;for(NSDictionary *app in [self readApplications])if([app[@"bundle"] isEqual:bundle])selected=app;
         if(!selected)@throw HakuError(@"The selected application is no longer installed");
+        if([selected[@"pid"] unsignedIntValue]==getpid()) @throw HakuError(@"The capture worker cannot restart itself. Run this export from a separate Haku terminal process.");
         if([selected[@"pid"] unsignedIntValue]) {
             [self emit:@"Restarting the selected application for capture…"];GError *e=NULL;
             frida_device_kill_sync(_device,[selected[@"pid"] unsignedIntValue],_cancellable,&e);[self checkGError:e];
@@ -206,7 +207,8 @@ static void onDetached(FridaSession *session,FridaSessionDetachReason reason,Fri
         g_signal_connect(_script,"message",G_CALLBACK(onMessage),(__bridge void *)self);
         frida_script_load_sync(_script,_cancellable,&e);[self checkGError:e];[self waitForInventory:YES];
         NSString *app=canonical(_inventory[@"appPath"]);
-        if(![app hasPrefix:@"/private/var/containers/Bundle/Application/"] && ![app hasPrefix:@"/var/containers/Bundle/Application/"]) @throw HakuError(@"Capture source is not an installed user bundle");
+        BOOL isDirectory=NO;
+        if(!app.isAbsolutePath || ![fm fileExistsAtPath:app isDirectory:&isDirectory] || !isDirectory) @throw HakuError(@"The runtime application bundle is unavailable");
         NSDictionary *info=[NSDictionary dictionaryWithContentsOfFile:[app stringByAppendingPathComponent:@"Info.plist"]];
         NSString *executable=info[@"CFBundleExecutable"];
         if(![info[@"CFBundleIdentifier"] isEqual:bundle] || !executable.length || ![executable.lastPathComponent isEqual:executable]) @throw HakuError(@"Selected application identity does not match the runtime bundle");
