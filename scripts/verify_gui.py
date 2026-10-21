@@ -34,7 +34,7 @@ function tree(){
 ObjC.schedule(ObjC.mainQueue,()=>{
  try{
   if(ObjC.classes.NSBundle.mainBundle().bundleIdentifier().toString()!=='com.jacklee.haku')throw Error('Attached process is not the Haku app');
-  const t=tree();if(t.app.applicationState()!==0)throw Error('Wake and activate Haku first');
+  const t=tree();if(Number(t.app.applicationState())!==0)throw Error('Wake and activate Haku first');
   if(t.vc.$className!=='HakuApplicationsController')throw Error('Return Haku to the application list first');
   const c=t.vc;
   c.search().setActive_(true);c.search().searchBar().setText_(cfg.query);
