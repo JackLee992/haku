@@ -1,0 +1,126 @@
+{
+  "schema": "haku-published-validation-v1",
+  "date": "2026-10-21",
+  "timezone": "Asia/Shanghai",
+  "environment": {
+    "device": "iPhone 12",
+    "model": "iPhone13,2",
+    "ios": "16.1.1",
+    "jailbreak": "Dopamine rootless"
+  },
+  "method": "Installed Haku CLI and shared on-device capture engine; independent ZIP reader and main Mach-O comparator",
+  "haku_0_2_0_default_port_rerun": {
+    "result": "passed",
+    "server_version": "17.24.3+haku.1",
+    "endpoint": "127.0.0.1:57042",
+    "capture_and_export_seconds": 32.0,
+    "native_images": 35,
+    "native_status_counts": {
+      "verified": 33,
+      "already_clear": 2
+    },
+    "captured_bytes": 235618304,
+    "zip_entries": 1383,
+    "zip_crc_all_valid": true,
+    "same_ipa_sha256_as_previous_custom_port_run": true,
+    "same_native_images_as_haku_0_1_0": true,
+    "main_independent_validation": true,
+    "original_native_images_unchanged": true,
+    "both_daemon_pids_unchanged": true
+  },
+  "haku_0_2_1": {
+    "result": "passed",
+    "server_version": "17.24.3+haku.1",
+    "endpoint": "127.0.0.1:57042",
+    "source_revision": "e79d1f316913f73d0332aa87d58b6745ce7e9c22",
+    "source_sha256": "d19b62957d310053cf0da9a487d881ae92bb5392388303ef62789f0aa50c72e4",
+    "package_sha256": "61d75cac40a54ff45f3cc3b47fb67dd6aed70a179956f1434b8d6eb4956aced7",
+    "host_client_checks_passed": 25,
+    "host_server_checks_passed": 8,
+    "applications_enumerated": 44,
+    "apple_applications_enumerated": 37,
+    "case_results": [
+      {
+        "exit_code": 0,
+        "status": "verified",
+        "fully_verified": true,
+        "main_verified": true,
+        "main_decrypted": true,
+        "captured_bytes": 235618304,
+        "native_images": 35,
+        "image_statuses": {
+          "verified": 33,
+          "already_clear": 2
+        },
+        "zip_entries": 1383,
+        "zip_crc_valid": true,
+        "case": "regression",
+        "capture_and_export_seconds": 33.0
+      },
+      {
+        "exit_code": 0,
+        "status": "verified",
+        "fully_verified": true,
+        "main_verified": true,
+        "main_decrypted": false,
+        "captured_bytes": 0,
+        "native_images": 1,
+        "image_statuses": {
+          "already_clear": 1
+        },
+        "zip_entries": 29,
+        "zip_crc_valid": true,
+        "case": "owned-demo",
+        "capture_and_export_seconds": 4.0
+      },
+      {
+        "exit_code": 0,
+        "status": "verified",
+        "fully_verified": true,
+        "main_verified": true,
+        "main_decrypted": false,
+        "captured_bytes": 0,
+        "native_images": 1,
+        "image_statuses": {
+          "already_clear": 1
+        },
+        "zip_entries": 59,
+        "zip_crc_valid": true,
+        "case": "apple-prefix",
+        "capture_and_export_seconds": 4.0
+      },
+      {
+        "exit_code": 0,
+        "status": "verified",
+        "fully_verified": true,
+        "main_verified": true,
+        "main_decrypted": false,
+        "captured_bytes": 0,
+        "native_images": 1,
+        "image_statuses": {
+          "already_clear": 1
+        },
+        "zip_entries": 10,
+        "zip_crc_valid": true,
+        "case": "rootless-self",
+        "capture_and_export_seconds": 4.0
+      }
+    ],
+    "regression_ipa_sha256_matches_0_2_0": true,
+    "regression_main_independent_validation": true,
+    "original_native_images_unchanged": true,
+    "suite_binaries_unchanged_during_capture": true,
+    "both_daemon_pids_unchanged": true,
+    "output_separation_checked": true,
+    "installed_icon_files_match_built_package": true
+  },
+  "unverified": {
+    "sileo_local_deb_gui_import": true,
+    "haku_gui_capture_and_share_sheet": true,
+    "export_signing_and_reinstallation": true,
+    "ordinary_launch_of_derived_app": true,
+    "derived_app_functional_behavior": true,
+    "other_device_os_combinations": true
+  },
+  "publication": "Summary only; raw captures, IPA files, target identifiers, image hashes, device identifiers and private transport evidence remain local."
+}

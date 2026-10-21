@@ -17,6 +17,7 @@ in `Resources/entitlements.plist`.
 | `HakuApp.m` | App list, search, capture progress, cancellation, export sharing; terminal interface |
 | `HakuConnection.m` | Strict port validation, persistent connection setting and loopback address construction |
 | `HakuEngine.m` | Loopback Frida client, exact bundle selection, suspended spawn, private copy, chunk coverage, reports, cleanup |
+| `HakuProcess.m` | Confirm the selected app and each capture-created process actually exit; bounded termination when the server stop request leaves a process alive |
 | `capture.js` | Loaded-image identity and segment-aware range capture, without ObjC/main-queue work or forced framework loading |
 | `HakuMachO.c` | Bounded Mach-O/FAT parser and strict encryption/stable-byte comparator |
 | `HakuArchive.m` | Streaming deflate ZIP creation and per-member CRC verification |
@@ -29,6 +30,18 @@ before detaching. The capture profile suppresses `exit`, `_exit`, `abort`, `rais
 and self-directed `kill` in
 that process during the capture; this is an acquisition aid, not an ordinary
 launch or functional-behavior claim.
+
+Application discovery does not filter bundle IDs, prefixes or installation
+directories. All applications reported by the server are selectable, including
+system and rootless apps. Capture validates the selected ID against the actual
+runtime bundle and executable rather than an allowlist. OS permissions, process
+availability and image coverage still determine the result. A worker cannot
+restart itself; Haku's terminal interface can export Haku from a separate process.
+
+After a server stop request, Haku confirms exit and uses a bounded POSIX
+termination check for that exact selected or capture-created PID. This handles
+app-manager termination requests that return while the process remains alive.
+It never targets a process group, itself, or unrelated applications.
 
 ## Acceptance criteria
 

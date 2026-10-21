@@ -2,6 +2,69 @@
 
 The acceptance criteria are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## 0.2.1: unrestricted app discovery and final package verification
+
+Validated on **2026-10-21 (Asia/Shanghai)** on iPhone 12 / iOS 16.1.1 /
+Dopamine rootless, using the installed Haku CLI and the GUI's shared engine.
+The unchanged server package is **17.24.3+haku.1**, on `127.0.0.1:57042`.
+The matching [sanitized JSON record](validation/2026-10-21.json) is also
+maintained in the server repository.
+
+| Gate | Result |
+| --- | --- |
+| Haku host integrity, archive, package, port and process-exit regressions | **25 passed** |
+| Maintained server host checks | **8 passed**; server package and executable unchanged |
+| Application discovery | **44 applications**, including **37 Apple applications**; no bundle-ID, prefix or installation-directory filtering |
+| Previous encrypted target, fresh full export | **Passed in 33 seconds**: 33 encrypted images verified, 2 already clear, 235,618,304 bytes captured |
+| Reproducibility | IPA SHA-256 exactly matches the 0.2.0 default-port and earlier custom-port exports; all 35 native image records match |
+| Independent validation | All **1,383** ZIP members pass CRC checks; the independent main Mach-O comparator passes against the fresh original from the preceding rerun |
+| Owner-built development app | Passed; 1 already-clear image, 29 ZIP members independently checked |
+| Apple-prefix system app (Calculator) | Passed; 1 already-clear image, 59 ZIP members independently checked |
+| Haku itself from its rootless installation, using a separate CLI worker | Passed; 1 already-clear image, 10 ZIP members independently checked |
+| Process restart and cleanup | Passed on the final package, including a pre-existing running development app |
+| Output separation | Rejects output inside an app bundle before creating files; original native files unchanged |
+| Server coexistence | Both daemon PIDs and server binary hashes unchanged across installation/capture; final connection succeeds on 57042 |
+| New manga icon | Installed 120/180-pixel PNGs match the built package; opaque assets generated from the 1024-pixel master |
+| Sileo local-file GUI install, Haku GUI capture and share sheet | Manual acceptance remains deferred; terminal package installation and CLI capture were tested |
+
+The three extra samples were already clear. Their successful exports establish
+coverage beyond the former app filters, not additional FairPlay decryption
+results. Enumeration of every installed app does not prove export compatibility
+for every system app or device configuration.
+
+The initial development-app attempt exposed a server stop request returning
+while the old process remained alive, preventing a fresh spawn. The final client
+confirms exit, terminates only the exact selected/capture-created PID when needed,
+and waits for a bounded interval. Four host regressions cover a surviving child,
+an already-exited process, self protection and process-group rejection. A fresh
+complete device pass on the final package succeeded for all four samples.
+
+Final package build revision: `e79d1f316913f73d0332aa87d58b6745ce7e9c22`.
+Source SHA-256: `d19b62957d310053cf0da9a487d881ae92bb5392388303ef62789f0aa50c72e4`.
+Package SHA-256: `61d75cac40a54ff45f3cc3b47fb67dd6aed70a179956f1434b8d6eb4956aced7`.
+Documentation commits after the build do not change these release assets.
+
+## 0.2.0: installed-suite rerun at the default port
+
+The requested reproducibility rerun on **2026-10-21** completed acquisition,
+native validation, IPA packaging, report persistence and private retrieval in
+**32 seconds**, with Haku 0.2.0 and haku-server 17.24.3+haku.1 at
+`127.0.0.1:57042`.
+
+All **35 native image records** matched both the previous custom-port suite run
+and the 0.1.0 baseline: **33 encrypted images verified, 2 already clear**, and
+**235,618,304 bytes** captured. The IPA's SHA-256 matched the earlier suite export
+exactly; a separate ZIP reader verified all **1,383** entries and compared their
+contents and modes. The independent main comparator passed: UUID preserved,
+`cryptid` 1 → 0, encryption-region bytes changed, stable bytes unchanged, and
+no remaining encrypted command in the main executable.
+
+All 35 installed original native images and the Haku/server binaries retained
+their pre-run hashes. Both server PIDs remained unchanged and the final app-list
+connection succeeded. The successful phone folder contained only the IPA and
+JSON report. Raw files and identifiers remain private; the published JSON above
+contains only the summary.
+
 ## 0.2.0 with haku-server
 
 Validated on 2026-10-21 on the same iPhone 12 / iOS 16.1.1 / Dopamine rootless
@@ -12,7 +75,7 @@ executable and a separate launchd service.
 | Gate | Status |
 | --- | --- |
 | Haku host integrity, package and connection checks | 21 passed |
-| Server host package, port and restart checks | 7 passed |
+| Server host package, port and restart checks | 7 passed in the original release lane; maintained branch now has 8 including branded-tag discovery |
 | Default 57042 and custom 58000 enumeration | Passed |
 | App port preference across fresh processes | Passed |
 | Daemon restart and upgrade preserve custom port | Passed |
