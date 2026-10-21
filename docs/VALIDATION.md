@@ -2,6 +2,70 @@
 
 The acceptance criteria are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## 0.2.2: foreground capture and exact byte counts
+
+Validated on **2026-10-21** on the same iPhone 12 / iOS 16.1.1 / Dopamine
+rootless device, with **haku-server 17.24.3+haku.2**. The
+[sanitized record](validation/2026-10-21-0.2.2.json) contains the final package
+identities and measured gates; raw targets, captures and device identifiers
+remain private.
+
+The previous GUI flow launched the target visibly while its main thread was
+deliberately suspended for capture. That displayed a white target screen and
+allowed iOS to suspend Haku during packaging. Reopening Haku resumed a retained
+run. The final pair launches the target in the background; Haku also requests
+finite background time, cancels on expiration, and restores its prior idle
+setting when finished.
+
+| Gate on the final installed pair | Result |
+| --- | --- |
+| Client/server host regressions | **28 client**, **9 server** checks passed |
+| Physical GUI selection with active search | **Passed** through the real UIKit table callback; 33 samples all show Haku active |
+| Export completion and share sheet | **Passed in 9.529 seconds**, including instrumentation setup; `Export verified` and a real `UIActivityViewController` |
+| Lifecycle cleanup | Previous idle setting restored; finite background task ended |
+| Small encrypted range | Original Mach-O declares **4,096 bytes**; UI displays **4.0 KiB (4096 bytes)** |
+| Complete output | **20,628,414 bytes** of app files copied; main executable **4,886,128 bytes**; IPA **16,297,676 bytes** |
+| Independent archive verification | All **60** ZIP members pass a separate Python CRC check |
+| Independent main validation | Same UUID/size, `cryptid` 1 → 0, unchanged stable bytes; decrypted entry-point instructions are coherent |
+| Independent live corroboration | A fresh original process, original USB Frida service and separate one-shot collector produce the exact same **4,096 plaintext bytes** |
+| Other native image | Already clear; complete file remains byte-identical to its original |
+| Custom port on the final pair | Full export succeeds at **58000**; old 57042 listener rejects connections; both final settings restored to **57042** |
+| Mac shared-core integration | Final pair exports/retrieves the IPA; local SHA-256 and all 60 ZIP members pass; a larger target cancels through the exact CLI worker PID with a retained `cancelled` report |
+| Original Frida coexistence | Original binary hash and daemon PID unchanged across pair installation |
+| Server GitHub CI | [Source build passed](https://github.com/JackLee992/haku-server/actions/runs/39542534072) |
+| Client GitHub CI | [Run](https://github.com/JackLee992/haku/actions/runs/39543694781) blocked before steps by the account payment/spending gate; local checks/build passed |
+
+The captured count measures encrypted ranges, rather than total app size. This
+sample's independently inspected encryption command declares one 4 KiB range,
+containing its entry point. The evidence above checks its actual contents,
+rather than relying on the count or a cleared `cryptid` alone. A separate IPA
+inspector marks coverage partial for a zero-sized encryption command in the
+already-clear framework; that framework has no encrypted bytes to capture and
+its entire file was independently compared unchanged.
+
+A separate QA identity was development-signed with an existing device-qualified
+profile, verified and installed through the normal iOS installer. Both that
+copy and an ordinary fresh launch of the installed original produced white USB
+screenshots for 30 seconds. A later read-only diagnostic confirmed the QA copy
+was active, its main queue responded, and its SwiftUI hosting controller and
+populated view tree existed. The executable also contains explicit screenshot
+protection code. That is consistent with capture privacy, but does not by itself
+prove the visible screen is correct. **Visual and functional acceptance remain
+unverified**. The original app was preserved; no capture protection, account,
+entitlement or device-security bypass was added.
+
+The GUI test uses a temporary app-level agent on a physical phone; it is not a
+physical-touch or XCTest result. The share sheet was presented, without sending
+files. Sileo local-file import remains manual acceptance. The Mac export and
+cancellation checks exercise the GUI's shared core through its diagnostic
+probe; see [Haku Mac validation](https://github.com/JackLee992/haku-mac/blob/main/docs/VALIDATION.md)
+for its separate UI and packaging evidence.
+
+Client build revision: `ac6a3b91bd7765d80dc5a9e9f96c15ea79b93adb`.
+Server build revision: `1a30e4b07c059a22787b27c257baf74ee63e54b3`.
+Each release's `build.json` records source and package hashes. Documentation
+commits after these builds do not alter the tested release assets.
+
 ## 0.2.1: unrestricted app discovery and final package verification
 
 Validated on **2026-10-21 (Asia/Shanghai)** on iPhone 12 / iOS 16.1.1 /

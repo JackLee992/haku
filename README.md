@@ -11,6 +11,11 @@ Exports screen to remove its files, including retained failed runs.
 **[Sileo installation](docs/INSTALLATION.md) · [Custom ports](docs/PORTS.md) ·
 [Validation results](docs/VALIDATION.md) · [Icon artwork](docs/BRANDING.md)**
 
+For a native Mac interface, use the separately maintained
+**[Haku Mac companion](https://github.com/JackLee992/haku-mac)**. It connects over
+an existing trusted SSH setup or its own USB forward, runs Haku on the phone,
+and retrieves and independently checks the IPA on the Mac.
+
 Current client: **[Haku 0.2.2](https://github.com/JackLee992/haku/releases/tag/v0.2.2)**.
 Install **[haku-server 17.24.3+haku.2](https://github.com/JackLee992/haku-server/releases/tag/haku-v17.24.3-haku.2)**
 first, then the Haku `.deb`, opening each downloaded file in Sileo. Haku's

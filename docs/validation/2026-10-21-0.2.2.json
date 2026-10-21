@@ -1,0 +1,97 @@
+{
+  "schema": "haku-published-validation-v1",
+  "date": "2026-10-21",
+  "timezone": "Asia/Shanghai",
+  "environment": {
+    "device": "iPhone 12",
+    "ios": "16.1.1",
+    "jailbreak": "Dopamine rootless"
+  },
+  "client": {
+    "version": "0.2.2",
+    "source_revision": "ac6a3b91bd7765d80dc5a9e9f96c15ea79b93adb",
+    "source_sha256": "bd3ed8073dc1879a970d34b73e06fc290d032d53a69051af924a77f3b52a9eab",
+    "package_sha256": "dc1e90a9a036f8f11741fc6fe74d96fac82f7725a0ea7a4f1a5cd9901e6b0316",
+    "host_checks_passed": 28
+  },
+  "server": {
+    "version": "17.24.3+haku.2",
+    "frida_protocol_version": "17.24.3",
+    "source_revision": "1a30e4b07c059a22787b27c257baf74ee63e54b3",
+    "source_sha256": "5b6d6e7e559cb2e202f8514601f872741750a9a52610905732c946497edb4c98",
+    "package_sha256": "3774cb3715f1474f2a125f900ca6688fa420c9cfd94098ad714883ae3c445b5f",
+    "binary_sha256": "56148e5b3f47e98dcd14ad7cc0f2b5c0f4f98945d827899134fa3095c2e70fe6",
+    "host_checks_passed": 9,
+    "source_dirty": false,
+    "runtime_version_verified": true,
+    "github_source_build_passed": true
+  },
+  "physical_gui": {
+    "method": "Real UIKit table callback through temporary app-level agent; not physical touch or XCTest",
+    "active_search": true,
+    "foreground_samples": 33,
+    "all_samples_active": true,
+    "export_and_share_sheet_passed": true,
+    "elapsed_including_instrumentation_seconds": 9.529,
+    "prior_idle_restored": true,
+    "finite_background_task_ended": true,
+    "share_files_sent": false
+  },
+  "small_encrypted_range_case": {
+    "result": "verified",
+    "bundle_bytes": 20628414,
+    "main_file_bytes": 4886128,
+    "declared_encrypted_bytes": 4096,
+    "captured_bytes": 4096,
+    "ui_capture_label": "4.0 KiB (4096 bytes)",
+    "ipa_bytes": 16297676,
+    "zip_entries": 60,
+    "independent_crc_all_passed": true,
+    "main_transition_comparator_passed": true,
+    "independent_fresh_original_live_plaintext_matches": true,
+    "already_clear_framework_whole_file_matches_original": true,
+    "independent_inspector_coverage_caveat": "A zero-sized encryption command in the already-clear framework produces a partial coverage flag; its whole file is independently unchanged."
+  },
+  "final_custom_port": {
+    "passed": true,
+    "elapsed_seconds": 4.931,
+    "endpoint": "127.0.0.1:58000",
+    "captured_bytes": 4096,
+    "ipa_bytes": 16297676,
+    "old_default_rejected": true,
+    "default_restored": 57042,
+    "saved_client_default_unchanged": true
+  },
+  "mac_shared_core": {
+    "phone_export_and_local_retrieval_verified": true,
+    "local_sha256_matches_phone_report": true,
+    "independent_zip_entries": 60,
+    "scoped_worker_sigint_cancellation_passed": true,
+    "cancelled_report_retained": true,
+    "cancelled_run_has_no_finished_ipa": true,
+    "method": "Diagnostic probe using the native GUI shared core; separate from GUI export clicks"
+  },
+  "coexistence": {
+    "original_frida_binary_unchanged": true,
+    "original_frida_daemon_pid_unchanged_across_pair_install": true
+  },
+  "separate_qa": {
+    "existing_device_qualified_development_signature_verified": true,
+    "normal_ios_install_passed": true,
+    "ordinary_original_and_qa_launch": "Both produced white USB screenshots for 30 seconds; visual and functional acceptance unverified",
+    "original_installed_app_preserved": true,
+    "private_entitlements_added": false,
+    "qa_active_process_and_responsive_main_queue": true,
+    "qa_populated_swiftui_view_tree": true,
+    "screenshot_protection_code_present": true,
+    "screenshot_protection_explains_white_capture": "Consistent inference, not independently proven",
+    "capture_protection_disabled": false
+  },
+  "limits": {
+    "sileo_gui_import": "Manual acceptance remains deferred",
+    "touch_and_xctest": "Not performed",
+    "other_device_os_combinations": "Not tested",
+    "client_github_actions": "Blocked before steps by account payment/spending gate; local tests/build passed"
+  },
+  "publication": "Sanitized summary only; target identifiers, raw captures, image hashes, IPAs, credentials and device identifiers remain private."
+}
